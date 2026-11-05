@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#14161b">
+<title>Передача by mysik</title>
+<style>
+  :root { --bg:#14161b; --card:#1c1f26; --card2:#262a33; --line:#2a2e37; --fg:#e8eaee; --sub:#8b92a0; --accent:#2fb36e; --red:#f0525f; color-scheme: dark; }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body { margin:0; background:var(--bg); color:var(--fg); font: 15px/1.45 -apple-system, "Segoe UI", Roboto, sans-serif;
+         padding: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) 32px max(16px, env(safe-area-inset-left)); }
+  header { display:flex; align-items:center; gap:10px; margin: 4px 0 18px; }
+  .logo { width:30px; height:30px; border-radius:9px; background:var(--accent); display:grid; place-items:center; font-weight:700; color:#fff; }
+  header b { font-size:17px; } header span { color:var(--sub); font-size:13px; display:block; }
+  .dot { margin-left:auto; width:9px; height:9px; border-radius:50%; background:var(--accent); box-shadow:0 0 0 4px rgba(47,179,110,.18); }
+  .dot.off { background:var(--red); box-shadow:0 0 0 4px rgba(240,82,95,.18); }
+  h2 { font-size:12px; letter-spacing:.06em; color:#6e7584; margin: 22px 4px 8px; font-weight:600; }
+  .card { background:var(--card); border-radius:16px; padding:6px 14px; }
+  .row { display:flex; align-items:center; gap:12px; padding:11px 0; border-top:1px solid var(--line); min-width:0; }
+  .row:first-child { border-top:0; }
+  .ic { width:38px; height:38px; border-radius:10px; background:var(--card2); display:grid; place-items:center; flex:none; font-size:10.5px; font-weight:700; color:var(--sub); letter-spacing:-.02em; }
+  .meta { min-width:0; flex:1; }
+  .name { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-weight:600; }
+  .size { color:var(--sub); font-size:13px; }
+  .btn { appearance:none; border:0; border-radius:12px; padding:10px 14px; font:600 14px inherit; font-family:inherit; color:#fff; background:var(--accent); text-decoration:none; flex:none; }
+  .btn.ghost { background:var(--card2); color:var(--fg); }
+  .empty { color:var(--sub); padding:14px 0; text-align:center; font-size:14px; }
+  .drop { display:block; text-align:center; background:var(--card); border:2px dashed #3a3f4b; border-radius:18px; padding:26px 16px; cursor:pointer; }
+  .drop b { display:block; font-size:16px; margin-top:8px; } .drop span { color:var(--sub); font-size:13px; }
+  .big { font-size:30px; color:var(--accent); line-height:1; }
+  input[type=file] { display:none; }
+  .bar { height:4px; background:var(--line); border-radius:2px; margin-top:6px; overflow:hidden; }
+  .bar i { display:block; height:100%; width:0; background:var(--accent); transition: width .2s; }
+  textarea { width:100%; min-height:84px; resize:vertical; background:var(--bg); color:var(--fg); border:1.5px solid var(--line); border-radius:12px; padding:10px 12px; font:inherit; }
+  textarea:focus { outline:none; border-color:var(--accent); }
+  .txt { white-space:pre-wrap; word-break:break-word; }
+  .toast { position:fixed; left:50%; bottom:max(20px, env(safe-area-inset-bottom)); transform:translateX(-50%); background:#2a2e38; padding:10px 16px; border-radius:12px; opacity:0; transition:opacity .2s; pointer-events:none; }
+  .toast.show { opacity:1; }
+  footer { color:#6e7584; font-size:12px; text-align:center; margin-top:26px; } footer b { color:var(--accent); }
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">⇄</div>
+  <div><b>Передача</b><span id="pc">Компьютер</span></div>
+  <div class="dot" id="dot" title="Связь с компьютером"></div>
+</header>
+
+<h2>НА КОМПЬЮТЕР</h2>
+<label class="drop" for="pick">
+  <div class="big">＋</div>
+  <b>Выбрать фото или файлы</b>
+  <span>Можно сразу несколько. Они сохранятся в папке «Передача by mysik».</span>
+</label>
+<input type="file" id="pick" multiple>
+<div class="card" id="uploads" style="margin-top:10px; display:none"></div>
+
+<div class="card" style="margin-top:10px; padding:12px 14px">
+  <textarea id="text" placeholder="Или напиши текст и ссылку — они появятся на компьютере"></textarea>
+  <div style="display:flex; justify-content:flex-end; margin-top:8px"><button class="btn" id="sendText">Отправить текст</button></div>
+</div>
+
+<h2>С КОМПЬЮТЕРА</h2>
+<div class="card" id="files"><div class="empty">Перетащи файлы в окно программы на компьютере — они появятся здесь</div></div>
+<div class="card" id="texts" style="margin-top:10px; display:none"></div>
+
+<footer>Передача <b>by mysik</b> · работает по Wi-Fi, без интернета и облаков</footer>
+<div class="toast" id="toast"></div>
+
+<script>
+  const K = new URLSearchParams(location.search).get("k") || "";
+  const q = (p) => p + (p.includes("?") ? "&" : "?") + "k=" + encodeURIComponent(K);
+  const $ = (id) => document.getElementById(id);
+  const esc = (s) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  const size = (b) => b < 1024 ? b + " Б" : b < 1048576 ? (b / 1024).toFixed(0) + " КБ" : b < 1073741824 ? (b / 1048576).toFixed(1) + " МБ" : (b / 1073741824).toFixed(2) + " ГБ";
+  const ext = (n) => { const i = n.lastIndexOf("."); return i > 0 ? n.slice(i + 1, i + 5).toUpperCase() : "FILE"; };
+  let lastState = "";
+
+  function toast(t) { const el = $("toast"); el.textContent = t; el.classList.add("show"); clearTimeout(el._t); el._t = setTimeout(() => el.classList.remove("show"), 2200); }
+
+  async function poll() {
+    try {
+      const r = await fetch(q("/api/state"), { cache: "no-store" });
+      if (!r.ok) throw 0;
+      const s = await r.json();
+      $("dot").classList.remove("off");
+      $("pc").textContent = s.pc;
+      const key = JSON.stringify(s);
+      if (key === lastState) return;
+      lastState = key;
+      $("files").innerHTML = s.files.length ? s.files.map((f) =>
+        `<div class="row"><div class="ic">${esc(ext(f.name))}</div><div class="meta"><div class="name">${esc(f.name)}</div><div class="size">${size(f.size)}</div></div>` +
+        `<a class="btn" href="${q("/d/" + f.id)}" download="${esc(f.name)}">Скачать</a></div>`).join("")
+        : `<div class="empty">Перетащи файлы в окно программы на компьютере — они появятся здесь</div>`;
+      $("texts").style.display = s.texts.length ? "block" : "none";
+      $("texts").innerHTML = s.texts.map((t, i) =>
+        `<div class="row"><div class="meta"><div class="txt">${esc(t)}</div></div><button class="btn ghost" data-i="${i}">Копировать</button></div>`).join("");
+      $("texts").querySelectorAll("button").forEach((b) => b.onclick = () => copy(s.texts[+b.dataset.i]));
+    } catch (e) {
+      $("dot").classList.add("off");
+    }
+  }
+
+  async function copy(t) {
+    try { await navigator.clipboard.writeText(t); toast("Скопировано"); }
+    catch (e) {
+      const a = document.createElement("textarea"); a.value = t; document.body.appendChild(a); a.select();
+      try { document.execCommand("copy"); toast("Скопировано"); } catch (e2) { toast("Выдели текст и скопируй вручную"); }
+      a.remove();
+    }
+  }
+
+  function upload(file) {
+    return new Promise((resolve) => {
+      const box = $("uploads");
+      box.style.display = "block";
+      const row = document.createElement("div");
+      row.className = "row";
+      row.innerHTML = `<div class="ic">${esc(ext(file.name))}</div><div class="meta"><div class="name">${esc(file.name)}</div>` +
+                      `<div class="size">${size(file.size)} · отправляю…</div><div class="bar"><i></i></div></div>`;
+      box.prepend(row);
+      const bar = row.querySelector("i"), st = row.querySelector(".size");
+      const x = new XMLHttpRequest();
+      x.open("POST", q("/u?name=" + encodeURIComponent(file.name)));
+      x.upload.onprogress = (e) => { if (e.lengthComputable) { const p = Math.round(e.loaded * 100 / e.total); bar.style.width = p + "%"; st.textContent = size(file.size) + " · " + p + "%"; } };
+      x.onload = () => { const ok = x.status === 200; bar.style.width = "100%"; bar.style.background = ok ? "" : "var(--red)"; st.textContent = size(file.size) + (ok ? " · на компьютере ✓" : " · ошибка"); resolve(); };
+      x.onerror = () => { bar.style.background = "var(--red)"; st.textContent = size(file.size) + " · нет связи с компьютером"; resolve(); };
+      x.send(file);
+    });
+  }
+
+  $("pick").onchange = async (e) => {
+    const files = [...e.target.files];
+    e.target.value = "";
+    for (const f of files) await upload(f);
+    if (files.length) toast(files.length > 1 ? "Готово: " + files.length + " файлов" : "Готово");
+  };
+
+  $("sendText").onclick = async () => {
+    const t = $("text").value.trim();
+    if (!t) return;
+    try {
+      const r = await fetch(q("/t"), { method: "POST", body: t, headers: { "Content-Type": "text/plain;charset=utf-8" } });
+      if (!r.ok) throw 0;
+      $("text").value = "";
+      toast("Текст на компьютере");
+    } catch (e) { toast("Нет связи с компьютером"); }
+  };
+
+  poll();
+  setInterval(poll, 2000);
+</script>
+</body>
+</html>
